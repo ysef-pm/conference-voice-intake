@@ -20,7 +20,8 @@ export function QuestionList({
     onAnswerChange,
 }: QuestionListProps) {
     const answeredCount = Object.values(answers).filter(Boolean).length;
-    const isEditing = status === "editing" || status === "complete";
+    // Allow editing when complete, in edit mode, or idle with answers
+    const isEditing = status === "editing" || status === "complete" || (status === "idle" && answeredCount > 0);
 
     const getQuestionStatus = (index: number): "pending" | "active" | "answered" => {
         const field = QUESTIONS[index].field;
