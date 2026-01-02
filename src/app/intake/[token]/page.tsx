@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { Mic, MessageSquare } from 'lucide-react'
+import { Mic, MessageSquare, Clock } from 'lucide-react'
 
 export default async function IntakeLandingPage({
   params,
@@ -23,7 +23,8 @@ export default async function IntakeLandingPage({
   }
 
   // Update status to clicked if imported/contacted
-  if (['imported', 'contacted', 'scheduled'].includes(attendee.status)) {
+  // Don't update if already scheduled - user chose to wait
+  if (['imported', 'contacted'].includes(attendee.status)) {
     await supabase
       .from('attendees')
       .update({ status: 'clicked' })
@@ -71,6 +72,17 @@ export default async function IntakeLandingPage({
             <h3 className="text-lg font-semibold text-white mb-2">Type instead</h3>
             <p className="text-sm text-gray-400">Chat at your own pace</p>
             <p className="text-xs text-gray-500 mt-2">~3 minutes</p>
+          </Link>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-gray-800">
+          <Link
+            href={`/intake/${token}/schedule`}
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-pink-500 transition-colors"
+          >
+            <Clock className="w-4 h-4" />
+            Not ready now? Schedule for later
+            <span className="ml-1">&rarr;</span>
           </Link>
         </div>
       </div>
