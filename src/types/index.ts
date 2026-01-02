@@ -1,3 +1,5 @@
+export * from './database'
+
 // Conversation transcript entry
 export interface TranscriptEntry {
     role: "agent" | "user";
@@ -5,8 +7,8 @@ export interface TranscriptEntry {
     timestamp: Date;
 }
 
-// Hard-coded question definition
-export interface Question {
+// Hard-coded question definition (legacy - used by voice intake)
+export interface LegacyQuestion {
     index: number;
     field: "whyJoining" | "aboutYourself" | "challenges";
     label: string;
