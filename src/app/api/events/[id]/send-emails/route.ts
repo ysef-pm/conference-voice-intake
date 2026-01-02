@@ -7,8 +7,6 @@ import {
   getOutreachEmailText,
 } from '@/lib/email/templates'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -17,6 +15,9 @@ export async function POST(
   if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({ error: 'Email service not configured' }, { status: 500 })
   }
+
+  // Instantiate Resend client inside handler to avoid build-time errors
+  const resend = new Resend(process.env.RESEND_API_KEY)
 
   const { id: eventId } = await params
   const supabase = await createClient()

@@ -1,6 +1,9 @@
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { Header } from '@/components/dashboard/Header'
 
+// Force dynamic rendering to avoid build-time Supabase client errors
+export const dynamic = 'force-dynamic'
+
 export default function DashboardLayout({
   children,
 }: {
