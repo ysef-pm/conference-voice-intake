@@ -75,8 +75,14 @@ export async function POST(
       errors: [] as string[]
     }
 
-    for (const attendee of attendees) {
+    for (let i = 0; i < attendees.length; i++) {
+      const attendee = attendees[i]
       const intakeUrl = `${appUrl}/intake/${attendee.token}`
+
+      // Add delay before each request (except first) to avoid rate limits
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 600))
+      }
 
       try {
         const { error: emailError } = await resend.emails.send({
@@ -120,9 +126,6 @@ export async function POST(
         }
 
         results.sent++
-
-        // I3: Rate limiting - add small delay between emails
-        await new Promise(resolve => setTimeout(resolve, 100)) // 100ms throttle
       } catch (err) {
         results.failed++
         results.errors.push(
