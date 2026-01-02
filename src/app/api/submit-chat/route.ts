@@ -79,10 +79,10 @@ Text: ${answerText}`
     }
   }
 
-  // Save response
+  // Save response (use insert, not upsert, to work with RLS)
   const { error: responseError } = await supabase
     .from('responses')
-    .upsert({
+    .insert({
       attendee_id: attendeeId,
       answers,
       embedding,
