@@ -45,6 +45,7 @@ export interface Attendee {
   phone: string | null
   token: string
   status: AttendeeStatus
+  matching_consent: boolean
   scheduled_at: string | null
   contacted_at: string | null
   completed_at: string | null

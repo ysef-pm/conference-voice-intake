@@ -30,6 +30,7 @@ export async function GET(
       name: attendee.name,
       email: attendee.email,
       status: attendee.status,
+      matching_consent: attendee.matching_consent ?? true,
     },
     event: {
       name: event.name,
