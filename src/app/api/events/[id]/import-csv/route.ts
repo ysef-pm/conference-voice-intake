@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js'
 
 /**
  * Parse a CSV line handling quoted values correctly.
@@ -53,6 +54,35 @@ function parseCSVLine(line: string): string[] {
   return result
 }
 
+/**
+ * Normalize phone number to E.164 format
+ * Returns null if invalid/unparseable
+ */
+function normalizePhone(phone: string | undefined): string | null {
+  if (!phone || !phone.trim()) return null
+
+  const cleaned = phone.trim()
+
+  try {
+    // Try parsing with auto-detection (assumes international format or common defaults)
+    if (isValidPhoneNumber(cleaned)) {
+      const parsed = parsePhoneNumber(cleaned)
+      return parsed.format('E.164')
+    }
+
+    // If no country code, try with NL as default (for SaaSiest context)
+    if (isValidPhoneNumber(cleaned, 'NL')) {
+      const parsed = parsePhoneNumber(cleaned, 'NL')
+      return parsed.format('E.164')
+    }
+
+    // Store raw if we can't parse - let Twilio try
+    return cleaned.startsWith('+') ? cleaned : null
+  } catch {
+    return null
+  }
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -104,7 +134,12 @@ export async function POST(
     const header = parseCSVLine(lines[0]).map(h => h.toLowerCase())
     const emailIndex = header.indexOf('email')
     const nameIndex = header.indexOf('name')
-    const phoneIndex = header.indexOf('phone')
+    // Support multiple phone column names
+    const phoneColumns = ['phone', 'phone_number', 'mobile', 'whatsapp', 'tel', 'telephone']
+    const phoneIndex = phoneColumns.reduce((found, col) => {
+      if (found !== -1) return found
+      return header.indexOf(col)
+    }, -1)
 
     if (emailIndex === -1) {
       return NextResponse.json({ error: 'CSV must have an email column' }, { status: 400 })
@@ -143,7 +178,7 @@ export async function POST(
         event_id: eventId,
         email,
         name: nameIndex !== -1 ? values[nameIndex] || null : null,
-        phone: phoneIndex !== -1 ? values[phoneIndex] || null : null,
+        phone: normalizePhone(phoneIndex !== -1 ? values[phoneIndex] : undefined),
         status: 'imported',
       })
     }
