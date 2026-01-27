@@ -14,6 +14,7 @@ export interface Event {
   email_template: EmailTemplate
   branding: Branding
   status: 'draft' | 'active' | 'completed'
+  outreach_channel: 'email' | 'whatsapp' | 'both'
   created_at: string
 }
 
