@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function NewEventPage() {
   const [name, setName] = useState('')
+  const [outreachChannel, setOutreachChannel] = useState<'email' | 'whatsapp' | 'both'>('email')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -52,6 +53,7 @@ export default function NewEventPage() {
         slug,
         questions: defaultQuestions,
         status: 'draft',
+        outreach_channel: outreachChannel,
       })
       .select()
       .single()
@@ -82,6 +84,44 @@ export default function NewEventPage() {
                 placeholder="SaaSiest 2026"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Outreach Channel</Label>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="outreachChannel"
+                    value="email"
+                    checked={outreachChannel === 'email'}
+                    onChange={() => setOutreachChannel('email')}
+                    className="text-pink-500"
+                  />
+                  <span className="text-gray-300">Email only</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="outreachChannel"
+                    value="whatsapp"
+                    checked={outreachChannel === 'whatsapp'}
+                    onChange={() => setOutreachChannel('whatsapp')}
+                    className="text-pink-500"
+                  />
+                  <span className="text-gray-300">WhatsApp only</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="outreachChannel"
+                    value="both"
+                    checked={outreachChannel === 'both'}
+                    onChange={() => setOutreachChannel('both')}
+                    className="text-pink-500"
+                  />
+                  <span className="text-gray-300">Both (sends to all available contacts)</span>
+                </label>
+              </div>
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <div className="flex gap-4">
