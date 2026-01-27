@@ -7,7 +7,8 @@ import { Match, Attendee } from '@/types/database'
 import { MatchCard } from '@/components/dashboard/MatchCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Sparkles, Loader2, Link2, Users, CheckCircle, AlertCircle } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Sparkles, Loader2, Link2, Users, CheckCircle, AlertCircle, Send, X } from 'lucide-react'
 
 type MatchWithAttendees = Match & {
   attendee_a: Attendee
@@ -21,6 +22,8 @@ export default function MatchesPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [sendingIntro, setSendingIntro] = useState<string | null>(null)
+  const [sendingBulk, setSendingBulk] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [result, setResult] = useState<{
     type: 'success' | 'error'
     message: string
@@ -87,29 +90,25 @@ export default function MatchesPage() {
     }
   }
 
-  const handleMarkAsIntroduced = async (matchId: string) => {
+  const handleSendIntroduction = async (matchId: string) => {
     setSendingIntro(matchId)
 
     try {
-      // Mark match as introduced (email not actually sent - manual tracking only)
-      const { error } = await supabase
-        .from('matches')
-        .update({
-          status: 'introduced',
-          introduced_at: new Date().toISOString()
-        })
-        .eq('id', matchId)
+      const response = await fetch(`/api/events/${eventId}/send-introductions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchIds: [matchId] }),
+      })
 
-      if (error) {
-        throw new Error(error.message)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send introduction')
       }
-
-      // Note: This only marks the status - no email is sent
-      // Email functionality can be added in the future
 
       setResult({
         type: 'success',
-        message: 'Match marked as introduced'
+        message: data.message
       })
 
       // Refresh matches list
@@ -117,12 +116,72 @@ export default function MatchesPage() {
     } catch (err) {
       setResult({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to mark as introduced'
+        message: err instanceof Error ? err.message : 'Failed to send introduction'
       })
     } finally {
       setSendingIntro(null)
     }
   }
+
+  const handleBulkSendIntroductions = async () => {
+    if (selectedIds.size === 0) return
+
+    setSendingBulk(true)
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/send-introductions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchIds: Array.from(selectedIds) }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send introductions')
+      }
+
+      setResult({
+        type: 'success',
+        message: data.message
+      })
+
+      // Clear selection and refresh
+      setSelectedIds(new Set())
+      await fetchMatches()
+    } catch (err) {
+      setResult({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to send introductions'
+      })
+    } finally {
+      setSendingBulk(false)
+    }
+  }
+
+  const handleSelectChange = (matchId: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (selected) {
+        next.add(matchId)
+      } else {
+        next.delete(matchId)
+      }
+      return next
+    })
+  }
+
+  const pendingMatches = matches.filter(m => m.status !== 'introduced')
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(pendingMatches.map(m => m.id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const allPendingSelected = pendingMatches.length > 0 && pendingMatches.every(m => selectedIds.has(m.id))
 
   // Clear result after 5 seconds
   useEffect(() => {
@@ -239,21 +298,79 @@ export default function MatchesPage() {
         </Card>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-0 z-20 bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-white font-medium">
+              {selectedIds.size} match{selectedIds.size !== 1 ? 'es' : ''} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Clear
+            </Button>
+            <Button
+              onClick={handleBulkSendIntroductions}
+              disabled={sendingBulk}
+              size="sm"
+              className="bg-pink-500 hover:bg-pink-600"
+            >
+              {sendingBulk ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Introductions
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Matches Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
         </div>
       ) : matches.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {matches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              onSendIntroduction={handleMarkAsIntroduced}
-              isSending={sendingIntro === match.id}
-            />
-          ))}
+        <div className="space-y-4">
+          {/* Select All */}
+          {pendingMatches.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={allPendingSelected}
+                onCheckedChange={handleSelectAll}
+                className="h-5 w-5 border-gray-600 data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+              />
+              <span className="text-sm text-gray-400">
+                Select all pending matches ({pendingMatches.length})
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {matches.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                onSendIntroduction={handleSendIntroduction}
+                isSending={sendingIntro === match.id}
+                isSelected={selectedIds.has(match.id)}
+                onSelectChange={handleSelectChange}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <Card className="bg-gray-900 border-gray-800">

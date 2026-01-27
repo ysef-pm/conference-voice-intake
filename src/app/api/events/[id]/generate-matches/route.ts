@@ -115,11 +115,18 @@ export async function POST(
     // Transform data to a usable format
     const attendees: AttendeeWithResponse[] = attendeesWithResponses.map(a => {
       const response = Array.isArray(a.responses) ? a.responses[0] : a.responses
+      // Supabase returns vector as string, need to parse it
+      let embedding: number[] = []
+      if (typeof response.embedding === 'string') {
+        embedding = JSON.parse(response.embedding)
+      } else if (Array.isArray(response.embedding)) {
+        embedding = response.embedding
+      }
       return {
         id: a.id,
         name: a.name,
         email: a.email,
-        embedding: response.embedding as number[],
+        embedding,
         answers: response.answers as Record<string, string>,
       }
     })

@@ -4,6 +4,7 @@ import { Match, Attendee } from '@/types/database'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Mail, User } from 'lucide-react'
 
 interface MatchCardProps {
@@ -13,6 +14,8 @@ interface MatchCardProps {
   }
   onSendIntroduction?: (matchId: string) => void
   isSending?: boolean
+  isSelected?: boolean
+  onSelectChange?: (matchId: string, selected: boolean) => void
 }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -70,13 +73,24 @@ function AttendeeAvatar({ name, email }: { name: string | null; email: string })
   )
 }
 
-export function MatchCard({ match, onSendIntroduction, isSending }: MatchCardProps) {
+export function MatchCard({ match, onSendIntroduction, isSending, isSelected, onSelectChange }: MatchCardProps) {
   const { attendee_a, attendee_b, similarity_score, common_interests, status } = match
   const statusInfo = statusConfig[status] || statusConfig.pending
 
   return (
-    <Card className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-colors">
+    <Card className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-colors relative">
       <CardContent className="p-6">
+        {/* Checkbox for selection */}
+        {onSelectChange && status !== 'introduced' && (
+          <div className="absolute top-4 right-4 z-10">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => onSelectChange(match.id, checked === true)}
+              className="h-5 w-5 border-gray-600 data-[state=checked]:bg-pink-500 data-[state=checked]:border-pink-500"
+            />
+          </div>
+        )}
+
         {/* Header with status badge */}
         <div className="flex justify-between items-start mb-6">
           <Badge className={`${statusInfo.color} text-white text-xs`}>
