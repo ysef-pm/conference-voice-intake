@@ -43,3 +43,6 @@ next-env.d.ts
 
 # worktrees
 .worktrees/
+
+# secrets
+.twilio_recovery_code.txt
