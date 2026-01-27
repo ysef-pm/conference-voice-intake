@@ -5,8 +5,15 @@ import { Conversation } from "@elevenlabs/client";
 import { TranscriptEntry, Answers, AppStatus } from "@/types";
 import { QUESTIONS } from "@/lib/questions";
 
+interface ConversationContext {
+    name: string;           // Event or community name
+    type: 'event' | 'community';
+    userName?: string;      // Attendee/member name for personalization
+}
+
 interface UseConversationProps {
     answers: Answers;
+    context?: ConversationContext;
     onAnswerSubmit: (field: keyof Answers, value: string) => void;
     onQuestionChange: (index: number) => void;
     onTranscriptUpdate: (entry: TranscriptEntry) => void;
@@ -16,6 +23,7 @@ interface UseConversationProps {
 
 export function useConversation({
     answers,
+    context,
     onAnswerSubmit,
     onQuestionChange,
     onTranscriptUpdate,
@@ -210,13 +218,44 @@ export function useConversation({
             conversationRef.current = conversation;
             onStatusChangeRef.current("conversing");
 
-            // Send context to agent
-            const context = `You are helping a conference attendee answer 3 questions.
-The questions are: ${QUESTIONS.map(q => q.label).join("; ")}.
-Please greet them warmly and start asking questions one by one using the getNextQuestion tool.
-When they answer, use submitAnswer to record their response, then move to the next question.`;
+            // Build context for agent
+            const contextName = context?.name || 'this event';
+            const contextType = context?.type || 'event';
+            const greeting = context?.userName ? `The person you're speaking with is ${context.userName}.` : '';
 
-            await conversation.sendContextualUpdate(context);
+            const settingDescription = contextType === 'community'
+                ? `You're helping a member of the ${contextName} community share what they're looking for so we can match them with other members.`
+                : `You're chatting with an attendee at ${contextName} to help them connect with the right people.`;
+
+            const agentContext = `${settingDescription}
+${greeting}
+
+YOUR WORKFLOW (you must follow this):
+1. Start by calling getNextQuestion to get the first topic
+2. Have a natural conversation to explore that topic
+3. When you have a clear answer, call submitAnswer with the field and their answer
+4. Then call getNextQuestion to get the next topic
+5. Repeat until getNextQuestion returns {complete: true}
+6. End with a warm closing
+
+TOPICS TO COVER (in order):
+${QUESTIONS.map((q, i) => `${i + 1}. ${q.field}: "${q.label}"`).join('\n')}
+
+CONVERSATION STYLE - Be natural, not robotic:
+- This is a friendly conversation, not an interview or survey
+- Acknowledge what they said before transitioning ("So you're focused on scaling...")
+- Find natural bridges between topics ("...which makes me curious about the challenges that come with that")
+- React like a human ("Oh interesting!", "That makes sense")
+
+AVOID:
+- "Great answer" or "Thanks for sharing"
+- "Now let me ask you about..." or "Moving on to the next question..."
+- Announcing question numbers
+- Rushing through topics
+
+Remember: Call the tools! getNextQuestion to get topics, submitAnswer to record answers.`;
+
+            await conversation.sendContextualUpdate(agentContext);
 
             // Request microphone
             await navigator.mediaDevices.getUserMedia({ audio: true });

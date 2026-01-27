@@ -142,6 +142,11 @@ export default function VoiceIntakePage() {
   // Conversation hook
   const { start, stop } = useConversation({
     answers: state.answers,
+    context: attendeeData ? {
+      name: attendeeData.eventName,
+      type: 'event',
+      userName: attendeeData.name || undefined,
+    } : undefined,
     onAnswerSubmit: handleAnswerSubmit,
     onQuestionChange: handleQuestionChange,
     onTranscriptUpdate: handleTranscriptUpdate,
