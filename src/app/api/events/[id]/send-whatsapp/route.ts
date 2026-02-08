@@ -1,7 +1,7 @@
 import twilio from 'twilio'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getWhatsAppOutreachMessage } from '@/lib/whatsapp/templates'
+import { getWhatsAppOutreachMessage, getOutreachContentVariables } from '@/lib/whatsapp/templates'
 
 export async function POST(
   request: Request,
@@ -108,18 +108,34 @@ export async function POST(
       }
 
       try {
-        const message = getWhatsAppOutreachMessage({
-          attendeeName: attendee.name,
-          eventName: event.name,
-          intakeUrl,
-          organizerName: organization.name,
-        })
+        const contentSid = process.env.TWILIO_CONTENT_SID_OUTREACH
 
-        await twilioClient.messages.create({
-          from: `whatsapp:${twilioWhatsAppNumber}`,
-          to: `whatsapp:${attendee.phone}`,
-          body: message,
-        })
+        if (contentSid) {
+          await twilioClient.messages.create({
+            from: `whatsapp:${twilioWhatsAppNumber}`,
+            to: `whatsapp:${attendee.phone}`,
+            contentSid,
+            contentVariables: JSON.stringify(
+              getOutreachContentVariables({
+                attendeeName: attendee.name,
+                eventName: event.name,
+                intakeUrl,
+                organizerName: organization.name,
+              })
+            ),
+          })
+        } else {
+          await twilioClient.messages.create({
+            from: `whatsapp:${twilioWhatsAppNumber}`,
+            to: `whatsapp:${attendee.phone}`,
+            body: getWhatsAppOutreachMessage({
+              attendeeName: attendee.name,
+              eventName: event.name,
+              intakeUrl,
+              organizerName: organization.name,
+            }),
+          })
+        }
 
         // Update attendee status to 'contacted' and set contacted_at
         const { error: updateError } = await supabase

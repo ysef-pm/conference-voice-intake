@@ -7,7 +7,7 @@ import {
   getIntroductionEmailHtml,
   getIntroductionEmailText,
 } from '@/lib/email/templates'
-import { getIntroductionWhatsAppMessage } from '@/lib/whatsapp/templates'
+import { getIntroductionWhatsAppMessage, getIntroductionContentVariables } from '@/lib/whatsapp/templates'
 
 interface MatchWithAttendees {
   id: string
@@ -187,37 +187,75 @@ export async function POST(
 
         // Send WhatsApp messages if channel is whatsapp or both
         if (twilioClient && twilioWhatsAppNumber && (outreachChannel === 'whatsapp' || outreachChannel === 'both')) {
+          const introContentSid = process.env.TWILIO_CONTENT_SID_INTRODUCTION
+
           // Send to attendee A (if they have a phone)
           if (attendee_a.phone) {
-            await twilioClient.messages.create({
-              from: `whatsapp:${twilioWhatsAppNumber}`,
-              to: `whatsapp:${attendee_a.phone}`,
-              body: getIntroductionWhatsAppMessage({
-                recipientName: personAName,
-                matchName: personBName,
-                matchEmail: attendee_b.email,
-                eventName: event.name,
-                commonInterests: interests,
-                organizerName: organization.name,
-              }),
-            })
+            if (introContentSid) {
+              await twilioClient.messages.create({
+                from: `whatsapp:${twilioWhatsAppNumber}`,
+                to: `whatsapp:${attendee_a.phone}`,
+                contentSid: introContentSid,
+                contentVariables: JSON.stringify(
+                  getIntroductionContentVariables({
+                    recipientName: personAName,
+                    matchName: personBName,
+                    matchEmail: attendee_b.email,
+                    eventName: event.name,
+                    commonInterests: interests,
+                    organizerName: organization.name,
+                  })
+                ),
+              })
+            } else {
+              await twilioClient.messages.create({
+                from: `whatsapp:${twilioWhatsAppNumber}`,
+                to: `whatsapp:${attendee_a.phone}`,
+                body: getIntroductionWhatsAppMessage({
+                  recipientName: personAName,
+                  matchName: personBName,
+                  matchEmail: attendee_b.email,
+                  eventName: event.name,
+                  commonInterests: interests,
+                  organizerName: organization.name,
+                }),
+              })
+            }
           }
 
           // Send to attendee B (if they have a phone)
           if (attendee_b.phone) {
             await new Promise(resolve => setTimeout(resolve, 200)) // Rate limit between messages
-            await twilioClient.messages.create({
-              from: `whatsapp:${twilioWhatsAppNumber}`,
-              to: `whatsapp:${attendee_b.phone}`,
-              body: getIntroductionWhatsAppMessage({
-                recipientName: personBName,
-                matchName: personAName,
-                matchEmail: attendee_a.email,
-                eventName: event.name,
-                commonInterests: interests,
-                organizerName: organization.name,
-              }),
-            })
+            if (introContentSid) {
+              await twilioClient.messages.create({
+                from: `whatsapp:${twilioWhatsAppNumber}`,
+                to: `whatsapp:${attendee_b.phone}`,
+                contentSid: introContentSid,
+                contentVariables: JSON.stringify(
+                  getIntroductionContentVariables({
+                    recipientName: personBName,
+                    matchName: personAName,
+                    matchEmail: attendee_a.email,
+                    eventName: event.name,
+                    commonInterests: interests,
+                    organizerName: organization.name,
+                  })
+                ),
+              })
+            } else {
+              await twilioClient.messages.create({
+                from: `whatsapp:${twilioWhatsAppNumber}`,
+                to: `whatsapp:${attendee_b.phone}`,
+                body: getIntroductionWhatsAppMessage({
+                  recipientName: personBName,
+                  matchName: personAName,
+                  matchEmail: attendee_a.email,
+                  eventName: event.name,
+                  commonInterests: interests,
+                  organizerName: organization.name,
+                }),
+              })
+            }
           }
           whatsappSent = true
         }

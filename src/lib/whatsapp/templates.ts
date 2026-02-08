@@ -57,3 +57,28 @@ Feel free to reach out to them - we hope this connection leads to something grea
 
 - ${organizerName}`
 }
+
+/**
+ * Content variable helpers for Twilio Content Templates (production WhatsApp).
+ * Variables are keyed as "1", "2", etc. matching {{1}}, {{2}} in the template.
+ */
+
+export function getOutreachContentVariables(params: WhatsAppTemplateParams): Record<string, string> {
+  return {
+    '1': params.attendeeName || 'there',
+    '2': params.eventName,
+    '3': params.intakeUrl,
+    '4': params.organizerName,
+  }
+}
+
+export function getIntroductionContentVariables(params: IntroductionWhatsAppParams): Record<string, string> {
+  return {
+    '1': params.recipientName || 'there',
+    '2': params.eventName,
+    '3': params.matchName,
+    '4': params.matchEmail,
+    '5': params.commonInterests,
+    '6': params.organizerName,
+  }
+}
