@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { AppState, Answers, TranscriptEntry, AppStatus } from '@/types'
-import { INITIAL_ANSWERS } from '@/lib/questions'
+import { AppState, TranscriptEntry, AppStatus, DynamicQuestion } from '@/types'
 import { useConversation } from '@/hooks/useConversation'
 import { VoiceControls, QuestionList, Conversation } from '@/components'
 
@@ -56,11 +55,12 @@ export default function VoiceIntakePage() {
   const [showEditPrompt, setShowEditPrompt] = useState(false)
   const [showCelebration, setShowCelebration] = useState(false)
   const [attendeeData, setAttendeeData] = useState<{ id: string; name: string | null; eventName: string } | null>(null)
+  const [questions, setQuestions] = useState<DynamicQuestion[]>([])
 
   const [state, setState] = useState<AppState>({
     status: 'idle',
     currentQuestionIndex: 0,
-    answers: { ...INITIAL_ANSWERS },
+    answers: {},
     transcript: [],
     error: null,
     lastUpdatedField: null,
@@ -68,7 +68,7 @@ export default function VoiceIntakePage() {
     userEmail: '',
   })
 
-  // Fetch attendee data on mount
+  // Fetch attendee data and event questions on mount
   useEffect(() => {
     const fetchAttendee = async () => {
       try {
@@ -80,8 +80,25 @@ export default function VoiceIntakePage() {
             name: data.attendee.name,
             eventName: data.event.name,
           })
+
+          // Set questions from event
+          const eventQuestions: DynamicQuestion[] = (data.event.questions || []).map(
+            (q: { id: string; field: string; label: string }, i: number) => ({
+              ...q,
+              order: i,
+            })
+          )
+          setQuestions(eventQuestions)
+
+          // Initialize empty answers for each question
+          const initialAnswers: Record<string, string> = {}
+          eventQuestions.forEach((q) => {
+            initialAnswers[q.field] = ''
+          })
+
           setState(s => ({
             ...s,
+            answers: initialAnswers,
             userName: data.attendee.name || '',
             userEmail: data.attendee.email || '',
           }))
@@ -105,7 +122,7 @@ export default function VoiceIntakePage() {
   }, [state.status])
 
   // Handlers
-  const handleAnswerSubmit = useCallback((field: keyof Answers, value: string) => {
+  const handleAnswerSubmit = useCallback((field: string, value: string) => {
     setState((s) => ({
       ...s,
       answers: { ...s.answers, [field]: value },
@@ -132,15 +149,16 @@ export default function VoiceIntakePage() {
     setState((s) => ({ ...s, error }))
   }, [])
 
-  const handleAnswerChange = useCallback((field: keyof Answers, value: string) => {
+  const handleAnswerChange = useCallback((field: string, value: string) => {
     setState((s) => ({
       ...s,
       answers: { ...s.answers, [field]: value },
     }))
   }, [])
 
-  // Conversation hook
+  // Conversation hook - now with dynamic questions
   const { start, stop } = useConversation({
+    questions,
     answers: state.answers,
     context: attendeeData ? {
       name: attendeeData.eventName,
@@ -198,10 +216,8 @@ export default function VoiceIntakePage() {
   // Toggle edit mode (Edit <-> Save)
   const handleEditToggle = () => {
     if (state.status === 'editing') {
-      // Save - lock fields
       setState((s) => ({ ...s, status: 'complete' }))
     } else {
-      // Edit - unlock fields
       setState((s) => ({ ...s, status: 'editing' }))
       setShowEditPrompt(false)
     }
@@ -212,7 +228,7 @@ export default function VoiceIntakePage() {
   const canSubmit = allAnswered && !isSubmitting
   const showEditSubmit = hasAnyAnswers || state.status === 'complete' || state.status === 'editing'
 
-  if (!attendeeData) {
+  if (!attendeeData || questions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -396,6 +412,7 @@ export default function VoiceIntakePage() {
           }}
         >
           <QuestionList
+            questions={questions}
             answers={state.answers}
             currentQuestionIndex={state.currentQuestionIndex}
             status={state.status}
