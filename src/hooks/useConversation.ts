@@ -266,7 +266,7 @@ YOUR WORKFLOW (you must follow this):
 3. When you have a clear answer, call submitAnswer with the field and their answer
 4. Then call getNextQuestion to get the next topic
 5. Repeat until getNextQuestion returns {complete: true}
-6. End with a warm closing
+6. When complete: say a brief warm goodbye (1-2 sentences MAX) and END the call immediately. Do not ask follow-up questions or continue chatting.
 
 TOPICS TO COVER (in order):
 ${currentQuestions.map((q, i) => `${i + 1}. ${q.field}: "${q.label}"`).join('\n')}
