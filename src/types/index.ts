@@ -7,19 +7,12 @@ export interface TranscriptEntry {
     timestamp: Date;
 }
 
-// Hard-coded question definition (legacy - used by voice intake)
-export interface LegacyQuestion {
-    index: number;
-    field: "whyJoining" | "aboutYourself" | "challenges";
-    label: string;
-}
+// Dynamic question from database (re-export for convenience)
+// The canonical type is `Question` from './database'
+export type { Question as DynamicQuestion } from './database'
 
-// Answer state
-export interface Answers {
-    whyJoining: string;
-    aboutYourself: string;
-    challenges: string;
-}
+// Answer state - dynamic, keyed by question field name
+export type Answers = Record<string, string>;
 
 // Application status
 export type AppStatus =
@@ -71,7 +64,5 @@ export interface WebhookPayload {
     timestamp: string;
     userName: string;
     userEmail: string;
-    whyJoining: string;
-    aboutYourself: string;
-    challenges: string;
+    [key: string]: string; // Dynamic fields
 }
