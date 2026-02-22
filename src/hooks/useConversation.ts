@@ -2,8 +2,7 @@
 
 import { useCallback, useRef, useEffect } from "react";
 import { Conversation } from "@elevenlabs/client";
-import { TranscriptEntry, Answers, AppStatus } from "@/types";
-import { QUESTIONS } from "@/lib/questions";
+import { TranscriptEntry, Answers, AppStatus, DynamicQuestion } from "@/types";
 
 interface ConversationContext {
     name: string;           // Event or community name
@@ -12,9 +11,10 @@ interface ConversationContext {
 }
 
 interface UseConversationProps {
+    questions: DynamicQuestion[];
     answers: Answers;
     context?: ConversationContext;
-    onAnswerSubmit: (field: keyof Answers, value: string) => void;
+    onAnswerSubmit: (field: string, value: string) => void;
     onQuestionChange: (index: number) => void;
     onTranscriptUpdate: (entry: TranscriptEntry) => void;
     onStatusChange: (status: AppStatus) => void;
@@ -22,6 +22,7 @@ interface UseConversationProps {
 }
 
 export function useConversation({
+    questions,
     answers,
     context,
     onAnswerSubmit,
@@ -31,7 +32,7 @@ export function useConversation({
     onError,
 }: UseConversationProps) {
     const conversationRef = useRef<Conversation | null>(null);
-    const activeFieldRef = useRef<keyof Answers | null>(null);
+    const activeFieldRef = useRef<string | null>(null);
     const userResponsesRef = useRef<string[]>([]);
     const lastAgentQuestionRef = useRef<string>("");
 
@@ -42,6 +43,7 @@ export function useConversation({
     const onStatusChangeRef = useRef(onStatusChange);
     const onErrorRef = useRef(onError);
     const answersRef = useRef(answers);
+    const questionsRef = useRef(questions);
 
     // Keep refs up to date
     useEffect(() => {
@@ -51,13 +53,15 @@ export function useConversation({
         onStatusChangeRef.current = onStatusChange;
         onErrorRef.current = onError;
         answersRef.current = answers;
+        questionsRef.current = questions;
     });
 
     // Find next unanswered question
     const getNextQuestionIndex = useCallback(() => {
         const currentAnswers = answersRef.current;
-        for (let i = 0; i < QUESTIONS.length; i++) {
-            const field = QUESTIONS[i].field;
+        const currentQuestions = questionsRef.current;
+        for (let i = 0; i < currentQuestions.length; i++) {
+            const field = currentQuestions[i].field;
             if (!currentAnswers[field]) {
                 return i;
             }
@@ -77,17 +81,17 @@ export function useConversation({
                 return JSON.stringify({ complete: true });
             }
 
-            const question = QUESTIONS[nextIndex];
+            const question = questionsRef.current[nextIndex];
             activeFieldRef.current = question.field;
             userResponsesRef.current = [];
             onQuestionChangeRef.current(nextIndex);
 
             const response = {
-                index: question.index,
+                index: nextIndex,
                 field: question.field,
                 label: question.label,
                 questionNumber: nextIndex + 1,
-                totalQuestions: QUESTIONS.length,
+                totalQuestions: questionsRef.current.length,
             };
 
             console.log("[getNextQuestion] Returning:", response);
@@ -98,7 +102,7 @@ export function useConversation({
             console.log("[submitAnswer] Called with:", args);
 
             const params = args[0] as { field?: string; value?: string } | undefined;
-            const field = params?.field as keyof Answers | undefined;
+            const field = params?.field;
             const value = params?.value;
 
             if (field && value) {
@@ -151,7 +155,7 @@ export function useConversation({
                         const userResponses = userResponsesRef.current;
 
                         if (userResponses.length > 0 && activeField) {
-                            const question = QUESTIONS.find(q => q.field === activeField);
+                            const question = questionsRef.current.find(q => q.field === activeField);
                             if (question) {
                                 try {
                                     const extractResponse = await fetch("/api/extract-answer", {
@@ -176,7 +180,7 @@ export function useConversation({
                                             // Move to next question
                                             const nextIdx = getNextQuestionIndex();
                                             if (nextIdx !== -1) {
-                                                activeFieldRef.current = QUESTIONS[nextIdx].field;
+                                                activeFieldRef.current = questionsRef.current[nextIdx].field;
                                                 onQuestionChangeRef.current(nextIdx);
                                             } else {
                                                 onStatusChangeRef.current("complete");
@@ -219,6 +223,7 @@ export function useConversation({
             onStatusChangeRef.current("conversing");
 
             // Build context for agent
+            const currentQuestions = questionsRef.current;
             const contextName = context?.name || 'this event';
             const contextType = context?.type || 'event';
             const greeting = context?.userName ? `The person you're speaking with is ${context.userName}.` : '';
@@ -239,7 +244,7 @@ YOUR WORKFLOW (you must follow this):
 6. End with a warm closing
 
 TOPICS TO COVER (in order):
-${QUESTIONS.map((q, i) => `${i + 1}. ${q.field}: "${q.label}"`).join('\n')}
+${currentQuestions.map((q, i) => `${i + 1}. ${q.field}: "${q.label}"`).join('\n')}
 
 CONVERSATION STYLE - Be natural, not robotic:
 - This is a friendly conversation, not an interview or survey
@@ -265,7 +270,7 @@ Remember: Call the tools! getNextQuestion to get topics, submitAnswer to record 
             onErrorRef.current(error instanceof Error ? error.message : "Failed to connect");
             onStatusChangeRef.current("idle");
         }
-    }, [clientTools, getNextQuestionIndex]);
+    }, [clientTools, getNextQuestionIndex, context]);
 
     const stop = useCallback(async () => {
         onStatusChangeRef.current("idle");
