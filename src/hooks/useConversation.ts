@@ -72,7 +72,7 @@ export function useConversation({
     // Client tools called by ElevenLabs agent
     const clientTools = {
         getNextQuestion: async (): Promise<string> => {
-            console.log("[getNextQuestion] Called");
+            console.log("[getNextQuestion] Called. questionsRef:", questionsRef.current.length, "items, answersRef:", JSON.stringify(answersRef.current));
             const nextIndex = getNextQuestionIndex();
             console.log("[getNextQuestion] Next index:", nextIndex);
 
@@ -138,11 +138,18 @@ export function useConversation({
 
             const { signedUrl } = await tokenResponse.json();
 
+            console.log("[start] Questions in ref:", questionsRef.current.length, questionsRef.current.map(q => q.field));
+            console.log("[start] Answers in ref:", JSON.stringify(answersRef.current));
+
             // Initialize conversation
             const conversation = await Conversation.startSession({
                 signedUrl,
                 clientTools,
+                onUnhandledClientToolCall: (params) => {
+                    console.error("[UNHANDLED TOOL CALL]", params);
+                },
                 onMessage: async (payload) => {
+                    console.log("[onMessage]", payload.source, payload.message?.substring(0, 80));
                     if (payload.source === "ai") {
                         onTranscriptUpdateRef.current({
                             role: "agent",
@@ -154,8 +161,10 @@ export function useConversation({
                         const activeField = activeFieldRef.current;
                         const userResponses = userResponsesRef.current;
 
+                        console.log("[Hybrid check] userResponses:", userResponses.length, "activeField:", activeField);
                         if (userResponses.length > 0 && activeField) {
                             const question = questionsRef.current.find(q => q.field === activeField);
+                            console.log("[Hybrid] Found question for field:", activeField, "->", question?.label);
                             if (question) {
                                 try {
                                     const extractResponse = await fetch("/api/extract-answer", {
@@ -260,7 +269,9 @@ AVOID:
 
 Remember: Call the tools! getNextQuestion to get topics, submitAnswer to record answers.`;
 
+            console.log("[start] Sending contextual update, length:", agentContext.length);
             await conversation.sendContextualUpdate(agentContext);
+            console.log("[start] Contextual update sent. Requesting mic...");
 
             // Request microphone
             await navigator.mediaDevices.getUserMedia({ audio: true });
