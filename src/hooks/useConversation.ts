@@ -99,11 +99,27 @@ export function useConversation({
         },
 
         submitAnswer: async (...args: unknown[]): Promise<string> => {
-            console.log("[submitAnswer] Called with:", args);
+            console.log("[submitAnswer] Called with:", JSON.stringify(args));
 
-            const params = args[0] as { field?: string; value?: string } | undefined;
-            const field = params?.field;
-            const value = params?.value;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const params = args[0] as Record<string, any> | undefined;
+
+            // Try direct field/value first (expected format)
+            let field = params?.field;
+            let value = params?.value;
+
+            // Fallback: use activeFieldRef if agent didn't send field
+            if (!field && activeFieldRef.current) {
+                field = activeFieldRef.current;
+                console.log("[submitAnswer] Using activeField fallback:", field);
+            }
+
+            // Fallback: try common parameter formats for value
+            if (!value && params) {
+                value = params.answer?.answer || params.answer || params.text ||
+                    (typeof params === 'string' ? params : undefined);
+                if (value) console.log("[submitAnswer] Extracted value from alt format:", value);
+            }
 
             if (field && value) {
                 console.log("[submitAnswer] Submitting:", field, value);
@@ -113,7 +129,7 @@ export function useConversation({
                 return JSON.stringify({ success: true });
             }
 
-            console.error("[submitAnswer] Missing field or value");
+            console.error("[submitAnswer] Missing field or value. params:", JSON.stringify(params));
             return JSON.stringify({ success: false, error: "Missing field or value" });
         },
     };
