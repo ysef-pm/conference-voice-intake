@@ -1,18 +1,19 @@
 "use client";
 
-import { Answers, AppStatus } from "@/types";
-import { QUESTIONS } from "@/lib/questions";
+import { Answers, AppStatus, DynamicQuestion } from "@/types";
 import { QuestionCard } from "./QuestionCard";
 
 interface QuestionListProps {
+    questions: DynamicQuestion[];
     answers: Answers;
     currentQuestionIndex: number;
     status: AppStatus;
     lastUpdatedField: string | null;
-    onAnswerChange: (field: keyof Answers, value: string) => void;
+    onAnswerChange: (field: string, value: string) => void;
 }
 
 export function QuestionList({
+    questions,
     answers,
     currentQuestionIndex,
     status,
@@ -24,7 +25,7 @@ export function QuestionList({
     const isEditing = status === "editing" || status === "complete" || (status === "idle" && answeredCount > 0);
 
     const getQuestionStatus = (index: number): "pending" | "active" | "answered" => {
-        const field = QUESTIONS[index].field;
+        const field = questions[index].field;
         if (answers[field]) return "answered";
         if (index === currentQuestionIndex && status === "conversing") return "active";
         return "pending";
@@ -52,7 +53,7 @@ export function QuestionList({
                 <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
                     <span style={{ color: "var(--pink-400)", fontWeight: 600 }}>{answeredCount}</span>
                     {" of "}
-                    <span style={{ fontWeight: 600 }}>{QUESTIONS.length}</span>
+                    <span style={{ fontWeight: 600 }}>{questions.length}</span>
                     {" questions answered"}
                 </p>
             </div>
@@ -68,12 +69,12 @@ export function QuestionList({
                     gap: "12px",
                 }}
             >
-                {QUESTIONS.map((question) => (
+                {questions.map((question, index) => (
                     <QuestionCard
-                        key={question.field}
-                        question={question}
-                        status={getQuestionStatus(question.index)}
-                        answer={answers[question.field]}
+                        key={question.id}
+                        question={{ index, field: question.field, label: question.label }}
+                        status={getQuestionStatus(index)}
+                        answer={answers[question.field] || ""}
                         isEditing={isEditing}
                         onAnswerChange={(value) => onAnswerChange(question.field, value)}
                         highlight={lastUpdatedField === question.field}
