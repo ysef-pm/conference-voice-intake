@@ -83,8 +83,10 @@ export default function VoiceIntakePage() {
 
           // Set questions from event
           const eventQuestions: DynamicQuestion[] = (data.event.questions || []).map(
-            (q: { id: string; field: string; label: string }, i: number) => ({
-              ...q,
+            (q: { id?: string; field: string; label: string }, i: number) => ({
+              id: q.id || `q_${i}`,
+              field: q.field,
+              label: q.label,
               order: i,
             })
           )
