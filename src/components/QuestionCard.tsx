@@ -1,11 +1,9 @@
 "use client";
 
-import { LegacyQuestion } from "@/types";
-
 type QuestionStatus = "pending" | "active" | "answered";
 
 interface QuestionCardProps {
-    question: LegacyQuestion;
+    question: { index: number; field: string; label: string };
     status: QuestionStatus;
     answer: string;
     isEditing: boolean;
