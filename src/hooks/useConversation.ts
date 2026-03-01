@@ -143,6 +143,9 @@ export function useConversation({
             lastAgentQuestionRef.current = "";
             activeFieldRef.current = null;
 
+            // Request microphone FIRST so user grants permission before agent starts talking
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+
             // Get signed URL
             const tokenResponse = await fetch("/api/get-agent-token", {
                 method: "POST",
@@ -156,6 +159,49 @@ export function useConversation({
 
             console.log("[start] Questions in ref:", questionsRef.current.length, questionsRef.current.map(q => q.field));
             console.log("[start] Answers in ref:", JSON.stringify(answersRef.current));
+
+            // Build context for agent BEFORE starting session
+            const currentQuestions = questionsRef.current;
+            const contextName = context?.name || 'this event';
+            const contextType = context?.type || 'event';
+            const userName = context?.userName || '';
+
+            const settingDescription = contextType === 'community'
+                ? `You're helping a member of the ${contextName} community share what they're looking for so we can match them with other members.`
+                : `You're chatting with an attendee at ${contextName} to help them connect with the right people.`;
+
+            const agentContext = `${settingDescription}
+${userName ? `The person you're speaking with is ${userName}.` : ''}
+
+IMPORTANT - START IMMEDIATELY:
+Do NOT introduce yourself. Do NOT say "hello" or "how are you". The user just clicked a button to start this conversation and is waiting for you to ask the first question.
+Immediately call getNextQuestion and ask the first topic right away.${userName ? ` You can greet them briefly by name ("Hey ${userName}!") as you ask the first question, but keep it very short.` : ''}
+
+YOUR WORKFLOW (you must follow this):
+1. Immediately call getNextQuestion to get the first topic and ask it
+2. Have a natural conversation to explore that topic
+3. When you have a clear answer, call submitAnswer with the field and their answer
+4. Then call getNextQuestion to get the next topic
+5. Repeat until getNextQuestion returns {complete: true}
+6. When complete: say a brief warm goodbye (1-2 sentences MAX) and END the call immediately. Do not ask follow-up questions or continue chatting.
+
+TOPICS TO COVER (in order):
+${currentQuestions.map((q, i) => `${i + 1}. ${q.field}: "${q.label}"`).join('\n')}
+
+CONVERSATION STYLE - Be natural, not robotic:
+- This is a friendly conversation, not an interview or survey
+- Acknowledge what they said before transitioning ("So you're focused on scaling...")
+- Find natural bridges between topics ("...which makes me curious about the challenges that come with that")
+- React like a human ("Oh interesting!", "That makes sense")
+
+AVOID:
+- "Great answer" or "Thanks for sharing"
+- "Now let me ask you about..." or "Moving on to the next question..."
+- Announcing question numbers
+- Rushing through topics
+- Long introductions or small talk before the first question
+
+Remember: Call the tools! getNextQuestion to get topics, submitAnswer to record answers.`;
 
             // Initialize conversation
             const conversation = await Conversation.startSession({
@@ -247,50 +293,10 @@ export function useConversation({
             conversationRef.current = conversation;
             onStatusChangeRef.current("conversing");
 
-            // Build context for agent
-            const currentQuestions = questionsRef.current;
-            const contextName = context?.name || 'this event';
-            const contextType = context?.type || 'event';
-            const greeting = context?.userName ? `The person you're speaking with is ${context.userName}.` : '';
-
-            const settingDescription = contextType === 'community'
-                ? `You're helping a member of the ${contextName} community share what they're looking for so we can match them with other members.`
-                : `You're chatting with an attendee at ${contextName} to help them connect with the right people.`;
-
-            const agentContext = `${settingDescription}
-${greeting}
-
-YOUR WORKFLOW (you must follow this):
-1. Start by calling getNextQuestion to get the first topic
-2. Have a natural conversation to explore that topic
-3. When you have a clear answer, call submitAnswer with the field and their answer
-4. Then call getNextQuestion to get the next topic
-5. Repeat until getNextQuestion returns {complete: true}
-6. When complete: say a brief warm goodbye (1-2 sentences MAX) and END the call immediately. Do not ask follow-up questions or continue chatting.
-
-TOPICS TO COVER (in order):
-${currentQuestions.map((q, i) => `${i + 1}. ${q.field}: "${q.label}"`).join('\n')}
-
-CONVERSATION STYLE - Be natural, not robotic:
-- This is a friendly conversation, not an interview or survey
-- Acknowledge what they said before transitioning ("So you're focused on scaling...")
-- Find natural bridges between topics ("...which makes me curious about the challenges that come with that")
-- React like a human ("Oh interesting!", "That makes sense")
-
-AVOID:
-- "Great answer" or "Thanks for sharing"
-- "Now let me ask you about..." or "Moving on to the next question..."
-- Announcing question numbers
-- Rushing through topics
-
-Remember: Call the tools! getNextQuestion to get topics, submitAnswer to record answers.`;
-
+            // Send context immediately after session starts
             console.log("[start] Sending contextual update, length:", agentContext.length);
             await conversation.sendContextualUpdate(agentContext);
-            console.log("[start] Contextual update sent. Requesting mic...");
-
-            // Request microphone
-            await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("[start] Contextual update sent.");
 
         } catch (error) {
             console.error("[start] Error:", error);

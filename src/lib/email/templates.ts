@@ -59,13 +59,27 @@ export function getOutreachEmailHtml({
                 Take 3 minutes to share your interests - you can chat with our AI assistant or have a quick voice conversation.
               </p>
 
-              <!-- CTA Button -->
+              <!-- CTA Button (Outlook-compatible bulletproof button) -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td style="text-align: center; padding: 16px 0;">
-                    <a href="${intakeUrl}" style="display: inline-block; background-color: #ec4899; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; padding: 14px 32px; border-radius: 8px;">
-                      Share Your Interests
-                    </a>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+                      <tr>
+                        <td style="background-color: #ec4899; border-radius: 8px; text-align: center;">
+                          <!--[if mso]>
+                          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${intakeUrl}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="17%" strokecolor="#ec4899" fillcolor="#ec4899">
+                            <w:anchorlock/>
+                            <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">Share Your Interests</center>
+                          </v:roundrect>
+                          <![endif]-->
+                          <!--[if !mso]><!-->
+                          <a href="${intakeUrl}" target="_blank" style="background-color: #ec4899; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; padding: 14px 32px; border-radius: 8px; display: inline-block; mso-padding-alt: 0; text-underline-color: #ec4899;">
+                            Share Your Interests
+                          </a>
+                          <!--<![endif]-->
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>

@@ -56,7 +56,7 @@ export default async function IntakeLandingPage({
           Choose how you&apos;d like to share:
         </p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             href={`/intake/${token}/voice`}
             className="p-6 rounded-xl border-2 border-gray-800 hover:border-pink-500 transition-all group"

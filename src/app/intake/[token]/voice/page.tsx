@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppState, TranscriptEntry, AppStatus, DynamicQuestion } from '@/types'
 import { useConversation } from '@/hooks/useConversation'
@@ -19,7 +19,7 @@ function Confetti() {
   }))
 
   return (
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100, overflow: 'hidden' }}>
+    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
       {pieces.map(piece => (
         <div
           key={piece.id}
@@ -56,6 +56,8 @@ export default function VoiceIntakePage() {
   const [showCelebration, setShowCelebration] = useState(false)
   const [attendeeData, setAttendeeData] = useState<{ id: string; name: string | null; eventName: string } | null>(null)
   const [questions, setQuestions] = useState<DynamicQuestion[]>([])
+  const [showQuestions, setShowQuestions] = useState(false)
+  const hasAutoStarted = useRef(false)
 
   const [state, setState] = useState<AppState>({
     status: 'idle',
@@ -158,7 +160,7 @@ export default function VoiceIntakePage() {
     }))
   }, [])
 
-  // Conversation hook - now with dynamic questions
+  // Conversation hook
   const { start, stop } = useConversation({
     questions,
     answers: state.answers,
@@ -173,6 +175,14 @@ export default function VoiceIntakePage() {
     onStatusChange: handleStatusChange,
     onError: handleError,
   })
+
+  // Auto-start conversation once data is loaded
+  useEffect(() => {
+    if (attendeeData && questions.length > 0 && !hasAutoStarted.current && state.status === 'idle') {
+      hasAutoStarted.current = true
+      start()
+    }
+  }, [attendeeData, questions, state.status, start])
 
   // Submit to webhook with attendee context
   const handleSubmit = async () => {
@@ -215,7 +225,7 @@ export default function VoiceIntakePage() {
     }
   }
 
-  // Toggle edit mode (Edit <-> Save)
+  // Toggle edit mode
   const handleEditToggle = () => {
     if (state.status === 'editing') {
       setState((s) => ({ ...s, status: 'complete' }))
@@ -229,77 +239,54 @@ export default function VoiceIntakePage() {
   const hasAnyAnswers = Object.values(state.answers).some(Boolean)
   const canSubmit = allAnswered && !isSubmitting
   const showEditSubmit = hasAnyAnswers || state.status === 'complete' || state.status === 'editing'
+  const answeredCount = Object.values(state.answers).filter(Boolean).length
 
   if (!attendeeData || questions.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-[100dvh] bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-3 border-pink-500/30 border-t-pink-500 animate-spin" />
+          <p className="text-sm text-gray-400">Setting up your conversation...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'linear-gradient(180deg, #0a0a12 0%, #0f0f1a 50%, #0a0a12 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="h-[100dvh] flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #0a0a12 0%, #0f0f1a 50%, #0a0a12 100%)' }}>
       {/* Confetti */}
       {showCelebration && <Confetti />}
 
-      {/* Ambient glow */}
+      {/* Ambient glow - hidden on mobile */}
       <div
+        className="hidden md:block absolute pointer-events-none transition-all duration-300"
         style={{
-          position: 'absolute',
           top: '20%',
           right: isDrawerOpen ? '33%' : '16%',
           width: '600px',
           height: '600px',
           background: 'radial-gradient(ellipse, rgba(236, 72, 153, 0.04) 0%, transparent 70%)',
-          pointerEvents: 'none',
-          transition: 'right 0.3s ease-out',
         }}
       />
 
       {/* Header */}
-      <header
-        style={{
-          position: 'relative',
-          zIndex: 20,
-          padding: '16px 32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-        }}
-      >
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <header className="relative z-20 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between border-b border-white/[0.06]">
+        {/* Logo / Event Name */}
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <div
+            className="w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center shrink-0"
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
               background: 'linear-gradient(135deg, var(--pink-500) 0%, var(--pink-400) 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
               boxShadow: '0 0 20px var(--accent-glow)',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             </svg>
           </div>
           <span
+            className="text-sm md:text-lg font-bold truncate"
             style={{
-              fontSize: '18px',
-              fontWeight: 700,
               background: 'linear-gradient(135deg, var(--pink-500) 0%, var(--pink-400) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -310,46 +297,46 @@ export default function VoiceIntakePage() {
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
           {showEditSubmit && state.status !== 'submitted' && (
             <>
-              {/* Edit/Save Toggle Button */}
+              {/* Edit/Save Toggle */}
               <button
                 onClick={handleEditToggle}
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                 style={{
-                  padding: '10px 20px',
-                  borderRadius: '10px',
-                  background: state.status === 'editing'
-                    ? 'rgba(16, 185, 129, 0.15)'
-                    : 'rgba(236, 72, 153, 0.1)',
-                  border: state.status === 'editing'
-                    ? '2px solid var(--green-500)'
-                    : '2px solid var(--pink-400)',
+                  background: state.status === 'editing' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(236, 72, 153, 0.1)',
+                  border: state.status === 'editing' ? '2px solid var(--green-500)' : '2px solid var(--pink-400)',
                   color: state.status === 'editing' ? 'var(--green-500)' : 'var(--pink-400)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease',
                 }}
               >
                 {state.status === 'editing' ? (
                   <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Save Changes
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                    Save
                   </>
                 ) : (
                   <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Edit Answers
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    Edit
                   </>
+                )}
+              </button>
+
+              {/* Mobile edit toggle - icon only */}
+              <button
+                onClick={handleEditToggle}
+                className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg transition-all"
+                style={{
+                  background: state.status === 'editing' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(236, 72, 153, 0.1)',
+                  border: state.status === 'editing' ? '2px solid var(--green-500)' : '2px solid var(--pink-400)',
+                  color: state.status === 'editing' ? 'var(--green-500)' : 'var(--pink-400)',
+                }}
+              >
+                {state.status === 'editing' ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                 )}
               </button>
 
@@ -357,43 +344,28 @@ export default function VoiceIntakePage() {
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
+                className="flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-lg text-sm font-semibold transition-all"
                 style={{
-                  padding: '10px 24px',
-                  borderRadius: '10px',
                   background: canSubmit
                     ? 'linear-gradient(135deg, var(--pink-500) 0%, var(--pink-600) 100%)'
                     : 'rgba(236, 72, 153, 0.1)',
                   border: 'none',
                   color: canSubmit ? 'white' : 'var(--text-muted)',
-                  fontSize: '14px',
-                  fontWeight: 600,
                   cursor: canSubmit ? 'pointer' : 'not-allowed',
                   boxShadow: canSubmit ? '0 0 30px var(--accent-glow)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease',
                 }}
               >
                 {isSubmitting ? (
                   <>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.3)',
-                      borderTopColor: 'white',
-                      animation: 'spin 1s linear infinite',
-                    }} />
-                    Submitting...
+                    <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    <span className="hidden md:inline">Submitting...</span>
                   </>
                 ) : (
                   <>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 2L11 13" />
-                      <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                      <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
                     </svg>
-                    Submit Answers
+                    <span className="hidden md:inline">Submit</span>
                   </>
                 )}
               </button>
@@ -403,16 +375,9 @@ export default function VoiceIntakePage() {
       </header>
 
       {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left Panel - Questions */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-            background: 'rgba(20, 20, 30, 0.4)',
-          }}
-        >
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* Questions Panel - hidden on mobile by default, shown as bottom sheet */}
+        <div className="hidden md:block md:flex-1 md:min-w-0 border-r border-white/[0.06]" style={{ background: 'rgba(20, 20, 30, 0.4)' }}>
           <QuestionList
             questions={questions}
             answers={state.answers}
@@ -424,67 +389,69 @@ export default function VoiceIntakePage() {
         </div>
 
         {/* Center Panel - Voice Controls */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '48px',
-            borderRight: isDrawerOpen ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
-          }}
-        >
+        <div className="flex flex-col items-center justify-center flex-1 px-6 py-8 md:py-12 md:px-12">
           <VoiceControls
             status={state.status}
             onStart={start}
             onStop={stop}
           />
 
-          {/* Transcript Toggle */}
+          {/* Mobile: progress indicator under voice button */}
+          <div className="md:hidden mt-6 text-center">
+            <p className="text-sm text-gray-400">
+              <span className="text-pink-400 font-semibold">{answeredCount}</span>
+              {' of '}
+              <span className="font-semibold">{questions.length}</span>
+              {' questions answered'}
+            </p>
+          </div>
+
+          {/* Mobile: toggle to show questions */}
           <button
-            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+            onClick={() => setShowQuestions(!showQuestions)}
+            className="md:hidden mt-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
             style={{
-              marginTop: '32px',
-              padding: '12px 24px',
-              borderRadius: '10px',
               background: '#1a1a24',
               border: '1px solid rgba(255, 255, 255, 0.1)',
               color: 'var(--text-secondary)',
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+            }}
+          >
+            {showQuestions ? 'Hide Answers' : 'View Answers'}
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              style={{ transform: showQuestions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          {/* Desktop: transcript toggle */}
+          <button
+            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+            className="hidden md:flex mt-8 items-center gap-2 px-5 py-3 rounded-lg text-sm font-medium"
+            style={{
+              background: '#1a1a24',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: 'var(--text-secondary)',
             }}
           >
             {isDrawerOpen ? 'Hide Transcript' : 'View Transcript'}
             <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              style={{
-                transform: isDrawerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
-              }}
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              style={{ transform: isDrawerOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
             >
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
         </div>
 
-        {/* Right Panel - Transcript (Drawer) */}
+        {/* Desktop: Transcript Drawer */}
         <div
+          className="hidden md:block overflow-hidden transition-all duration-300"
           style={{
             flex: isDrawerOpen ? 1 : 0,
             width: isDrawerOpen ? 'auto' : 0,
-            overflow: 'hidden',
             background: 'rgba(20, 20, 30, 0.6)',
-            transition: 'all 0.3s ease-out',
           }}
         >
           {isDrawerOpen && (
@@ -497,60 +464,50 @@ export default function VoiceIntakePage() {
         </div>
       </div>
 
+      {/* Mobile: Expandable questions panel */}
+      {showQuestions && (
+        <div
+          className="md:hidden absolute bottom-0 left-0 right-0 z-30 max-h-[60vh] overflow-y-auto rounded-t-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-200"
+          style={{ background: 'rgba(15, 15, 26, 0.98)', backdropFilter: 'blur(20px)' }}
+        >
+          {/* Handle bar */}
+          <div className="sticky top-0 flex justify-center py-3" style={{ background: 'rgba(15, 15, 26, 0.98)' }}>
+            <div className="w-10 h-1 rounded-full bg-white/20" />
+          </div>
+          <QuestionList
+            questions={questions}
+            answers={state.answers}
+            currentQuestionIndex={state.currentQuestionIndex}
+            status={state.status}
+            lastUpdatedField={state.lastUpdatedField}
+            onAnswerChange={handleAnswerChange}
+          />
+        </div>
+      )}
+
       {/* Edit Prompt Toast */}
       {showEditPrompt && (
-        <div
+        <div className="fixed bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 z-50 p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-bottom"
           style={{
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 50,
-            padding: '16px 28px',
-            borderRadius: '16px',
             background: 'rgba(236, 72, 153, 0.15)',
             border: '1px solid var(--pink-500)',
             boxShadow: '0 0 40px var(--accent-glow)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            animation: 'slideUp 0.3s ease-out',
           }}
         >
-          <div
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: 'var(--pink-500)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          <div className="w-10 h-10 rounded-lg bg-pink-500 flex items-center justify-center shrink-0">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="white" strokeWidth="2" fill="none" />
             </svg>
           </div>
-          <div>
-            <p style={{ fontSize: '15px', fontWeight: 600, color: 'white', marginBottom: '2px' }}>
-              Conversation complete!
-            </p>
-            <p style={{ fontSize: '13px', color: 'var(--pink-400)' }}>
-              Feel free to edit your answers before submitting
-            </p>
+          <div className="min-w-0">
+            <p className="text-sm md:text-[15px] font-semibold text-white">Conversation complete!</p>
+            <p className="text-xs md:text-[13px] text-pink-400">Edit your answers before submitting</p>
           </div>
           <button
             onClick={() => setShowEditPrompt(false)}
-            style={{
-              marginLeft: '8px',
-              padding: '4px',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-            }}
+            className="ml-auto p-1 shrink-0"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -561,74 +518,32 @@ export default function VoiceIntakePage() {
 
       {/* Success Celebration Modal */}
       {state.status === 'submitted' && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(10, 10, 18, 0.9)',
-            animation: 'fadeIn 0.3s ease-out',
-          }}
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in"
+          style={{ background: 'rgba(10, 10, 18, 0.9)' }}
         >
-          <div
+          <div className="text-center p-8 md:p-12 rounded-3xl max-w-sm w-full animate-in zoom-in-95"
             style={{
-              textAlign: 'center',
-              padding: '48px 64px',
-              borderRadius: '24px',
               background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(10, 10, 18, 0.95) 100%)',
               border: '1px solid rgba(16, 185, 129, 0.3)',
               boxShadow: '0 0 60px rgba(16, 185, 129, 0.2)',
-              animation: 'scaleIn 0.4s ease-out',
             }}
           >
             <div
+              className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-5 md:mb-6 rounded-full flex items-center justify-center"
               style={{
-                width: '80px',
-                height: '80px',
-                margin: '0 auto 24px',
-                borderRadius: '50%',
                 background: 'linear-gradient(135deg, var(--green-500) 0%, #059669 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 boxShadow: '0 0 40px rgba(16, 185, 129, 0.4)',
               }}
             >
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
                 <polyline points="20 6 9 17 4 12" stroke="white" strokeWidth="3" fill="none" />
               </svg>
             </div>
-            <h2
-              style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                color: 'white',
-                marginBottom: '12px',
-              }}
-            >
-              You&apos;re all set!
-            </h2>
-            <p
-              style={{
-                fontSize: '16px',
-                color: 'var(--text-secondary)',
-                maxWidth: '360px',
-                lineHeight: 1.6,
-                marginBottom: '8px',
-              }}
-            >
+            <h2 className="text-2xl md:text-[28px] font-bold text-white mb-3">You&apos;re all set!</h2>
+            <p className="text-sm md:text-base text-gray-400 leading-relaxed mb-2">
               Congratulations on submitting your answers!
             </p>
-            <p
-              style={{
-                fontSize: '18px',
-                color: 'var(--green-500)',
-                fontWeight: 600,
-              }}
-            >
+            <p className="text-base md:text-lg font-semibold" style={{ color: 'var(--green-500)' }}>
               We&apos;re going to match you with cool people!
             </p>
           </div>
@@ -636,18 +551,6 @@ export default function VoiceIntakePage() {
       )}
 
       <style>{`
-        @keyframes slideUp {
-          from { transform: translateX(-50%) translateY(20px); opacity: 0; }
-          to { transform: translateX(-50%) translateY(0); opacity: 1; }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

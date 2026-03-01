@@ -25,7 +25,7 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
         }
     };
 
-    // Spacebar shortcut
+    // Spacebar shortcut (desktop only)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (
@@ -49,7 +49,7 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
             {/* Voice Button */}
             <div style={{ position: "relative" }}>
                 {/* Glow rings when listening */}
@@ -80,10 +80,9 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
                 <button
                     onClick={handleClick}
                     disabled={isProcessing || status === "submitted"}
+                    className="w-20 h-20 md:w-[100px] md:h-[100px]"
                     style={{
                         position: "relative",
-                        width: "100px",
-                        height: "100px",
                         borderRadius: "50%",
                         border: "none",
                         cursor: isProcessing || status === "submitted" ? "not-allowed" : "pointer",
@@ -103,14 +102,14 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
                     }}
                 >
                     {isListening ? (
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="#0a0a12">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="#0a0a12">
                             <rect x="6" y="6" width="12" height="12" rx="2" />
                         </svg>
                     ) : isProcessing ? (
                         <div
                             style={{
-                                width: "32px",
-                                height: "32px",
+                                width: "28px",
+                                height: "28px",
                                 borderRadius: "50%",
                                 border: "3px solid rgba(236, 72, 153, 0.3)",
                                 borderTopColor: "var(--pink-500)",
@@ -118,7 +117,7 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
                             }}
                         />
                     ) : (
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--pink-500)" strokeWidth="2">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--pink-500)" strokeWidth="2">
                             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                             <line x1="12" y1="19" x2="12" y2="23" />
@@ -132,17 +131,18 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
             <div style={{ textAlign: "center" }}>
                 <p
                     style={{
-                        fontSize: "16px",
+                        fontSize: "15px",
                         fontWeight: 600,
                         color: isListening ? "var(--pink-400)" : "var(--text-secondary)",
-                        marginBottom: "8px",
+                        marginBottom: "4px",
                     }}
                 >
                     {getStatusText()}
                 </p>
 
+                {/* Desktop-only keyboard hints */}
                 {status === "idle" && (
-                    <p style={{ fontSize: "13px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+                    <p className="hidden md:flex" style={{ fontSize: "13px", color: "var(--text-muted)", alignItems: "center", gap: "8px", justifyContent: "center" }}>
                         Press
                         <kbd
                             style={{
@@ -161,24 +161,36 @@ export function VoiceControls({ status, onStart, onStop }: VoiceControlsProps) {
                     </p>
                 )}
 
-                {isListening && (
-                    <p style={{ fontSize: "13px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
-                        Press
-                        <kbd
-                            style={{
-                                padding: "4px 10px",
-                                borderRadius: "6px",
-                                background: "rgba(236, 72, 153, 0.1)",
-                                border: "1px solid var(--glass-border)",
-                                fontSize: "12px",
-                                fontFamily: "monospace",
-                                color: "var(--pink-400)",
-                            }}
-                        >
-                            space
-                        </kbd>
-                        to stop
+                {/* Mobile tap hint */}
+                {status === "idle" && (
+                    <p className="md:hidden" style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                        Tap to start
                     </p>
+                )}
+
+                {isListening && (
+                    <>
+                        <p className="hidden md:flex" style={{ fontSize: "13px", color: "var(--text-muted)", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+                            Press
+                            <kbd
+                                style={{
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    background: "rgba(236, 72, 153, 0.1)",
+                                    border: "1px solid var(--glass-border)",
+                                    fontSize: "12px",
+                                    fontFamily: "monospace",
+                                    color: "var(--pink-400)",
+                                }}
+                            >
+                                space
+                            </kbd>
+                            to stop
+                        </p>
+                        <p className="md:hidden" style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                            Tap to stop
+                        </p>
+                    </>
                 )}
             </div>
         </div>
