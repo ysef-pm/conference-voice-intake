@@ -467,21 +467,33 @@ export default function VoiceIntakePage() {
       {/* Mobile: Expandable questions panel */}
       {showQuestions && (
         <div
-          className="md:hidden absolute bottom-0 left-0 right-0 z-30 max-h-[60vh] overflow-y-auto rounded-t-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-200"
+          className="md:hidden absolute bottom-0 left-0 right-0 z-30 max-h-[60vh] rounded-t-2xl border-t border-white/10 animate-in slide-in-from-bottom duration-200"
           style={{ background: 'rgba(15, 15, 26, 0.98)', backdropFilter: 'blur(20px)' }}
         >
-          {/* Handle bar */}
-          <div className="sticky top-0 flex justify-center py-3" style={{ background: 'rgba(15, 15, 26, 0.98)' }}>
-            <div className="w-10 h-1 rounded-full bg-white/20" />
+          {/* Close button header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-white/[0.06]" style={{ background: 'rgba(15, 15, 26, 0.98)' }}>
+            <span className="text-sm font-semibold text-white">Your Answers</span>
+            <button
+              onClick={() => setShowQuestions(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text-secondary)' }}
+            >
+              Hide
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
           </div>
-          <QuestionList
-            questions={questions}
-            answers={state.answers}
-            currentQuestionIndex={state.currentQuestionIndex}
-            status={state.status}
-            lastUpdatedField={state.lastUpdatedField}
-            onAnswerChange={handleAnswerChange}
-          />
+          <div className="overflow-y-auto max-h-[calc(60vh-48px)] overscroll-contain">
+            <QuestionList
+              questions={questions}
+              answers={state.answers}
+              currentQuestionIndex={state.currentQuestionIndex}
+              status={state.status}
+              lastUpdatedField={state.lastUpdatedField}
+              onAnswerChange={handleAnswerChange}
+            />
+          </div>
         </div>
       )}
 
