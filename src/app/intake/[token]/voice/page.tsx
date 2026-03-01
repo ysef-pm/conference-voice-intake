@@ -511,8 +511,54 @@ export default function VoiceIntakePage() {
         </div>
       )}
 
-      {/* Edit Prompt Toast */}
-      {showEditPrompt && (
+      {/* Bottom Submit Bar — prominent CTA when all answers are ready */}
+      {canSubmit && state.status !== 'submitted' && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 p-4 md:p-5 animate-in slide-in-from-bottom duration-300"
+          style={{
+            background: 'linear-gradient(to top, rgba(10, 10, 18, 0.98) 0%, rgba(10, 10, 18, 0.95) 80%, transparent 100%)',
+          }}
+        >
+          <div className="max-w-lg mx-auto flex flex-col gap-3">
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl text-base md:text-lg font-bold transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, var(--pink-500) 0%, var(--pink-600) 100%)',
+                color: 'white',
+                border: 'none',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                boxShadow: '0 0 40px var(--accent-glow), 0 4px 20px rgba(236, 72, 153, 0.3)',
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                  </svg>
+                  Submit My Answers
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleEditToggle}
+              className="w-full py-2 text-sm font-medium transition-all"
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              {state.status === 'editing' ? 'Done editing' : 'Edit answers first'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Prompt Toast — only show when not all answers are ready yet */}
+      {showEditPrompt && !canSubmit && (
         <div className="fixed bottom-4 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 z-50 p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-bottom"
           style={{
             background: 'rgba(236, 72, 153, 0.15)',
